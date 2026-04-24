@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="description" content="Scan any URL for phishing threats using AI and real-time threat intelligence." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡</text></svg>" />
   <title>URL Scanner — PhishGuard</title>
   <link rel="stylesheet" href="css/style.css" />
   <style>
@@ -317,7 +318,7 @@ async function runScan() {
     History.add(data);
     renderResult(data);
   } catch(e) {
-    errBox.innerHTML = `<div class="alert alert-danger">⚠ Could not reach backend. Make sure Flask is running on port 5000.<br><small>${e.message}</small></div>`;
+    errBox.innerHTML = `<div class="alert alert-danger">🚨 Backend unreachable. The server may be waking up (free tier). Please wait 30 seconds and try again.<br><small style='opacity:0.6'>${e.message}</small></div>`;
     errBox.style.display = "block";
   }
 

@@ -1,12 +1,14 @@
 import multiprocessing
 
-workers = min(2, multiprocessing.cpu_count())
-worker_class = "sync"
-timeout = 120
-keepalive = 5
-max_requests = 1000
-max_requests_jitter = 100
-accesslog = "-"
-errorlog = "-"
-loglevel = "info"
-forwarded_allow_ips = "*"
+# Render free tier has 1 CPU — keep workers low to avoid OOM
+workers          = 2
+worker_class     = "sync"
+timeout          = 120          # kill workers stuck > 2 min
+keepalive        = 5
+max_requests     = 500          # recycle workers to prevent memory leaks
+max_requests_jitter = 50
+accesslog        = "-"
+errorlog         = "-"
+loglevel         = "info"
+forwarded_allow_ips = "*"       # trust Render's proxy headers
+preload_app      = True         # load app once, share across workers (saves RAM)

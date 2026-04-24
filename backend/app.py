@@ -17,14 +17,14 @@ from flask_limiter.util import get_remote_address
 from model import extract_features, features_to_array, get_suspicious_reasons
 from database import save_scan, get_recent_scans, get_stats, search_scans, is_connected
 
-# Load .env for local development
+# Load .env for local development only
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    pass  # dotenv not required in production (Render uses env vars directly)
+    pass
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -32,33 +32,48 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── App setup ─────────────────────────────────────────────────────────────────
-FRONTEND = os.path.join(os.path.dirname(__file__), "..", "docs")
-if not os.path.exists(FRONTEND):
-    FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app = Flask(__name__, static_folder=os.path.abspath(FRONTEND), static_url_path="")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB max request body
+# ── Config ────────────────────────────────────────────────────────────────────
+IS_PRODUCTION = os.environ.get("RENDER") == "true" or os.environ.get("ENV") == "production"
+ALLOWED_ORIGINS = [
+    "https://sabuj123472.github.io",
+    "https://phishguard-sneg.onrender.com",
+    "http://127.0.0.1:5000",
+    "http://localhost:5000",
+]
 
-CORS(app, resources={r"/analyze": {"origins": "*"}, r"/recent": {"origins": "*"}, r"/health": {"origins": "*"}, r"/stats": {"origins": "*"}, r"/search": {"origins": "*"}})
+# Resolve frontend folder — docs (GitHub Pages) or frontend (local)
+_base = os.path.dirname(__file__)
+FRONTEND = os.path.abspath(os.path.join(_base, "..", "docs"))
+if not os.path.isdir(FRONTEND):
+    FRONTEND = os.path.abspath(os.path.join(_base, "..", "frontend"))
+log.info("Serving frontend from: %s", FRONTEND)
+
+# ── App ───────────────────────────────────────────────────────────────────────
+app = Flask(__name__, static_folder=FRONTEND, static_url_path="")
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB max body
+
+CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=False)
 
 limiter = Limiter(
     get_remote_address,
     app=app,
-    default_limits=["200 per day", "60 per hour"],
+    default_limits=["300 per day", "60 per hour"],
     storage_uri="memory://",
+    on_breach=lambda limit: log.warning("Rate limit hit: %s from %s", limit, request.remote_addr),
 )
 
-# ── Model ─────────────────────────────────────────────────────────────────────
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "phishing_model.pkl")
+# ── ML Model ──────────────────────────────────────────────────────────────────
+MODEL_PATH = os.path.join(_base, "phishing_model.pkl")
 try:
     model = joblib.load(MODEL_PATH)
-    log.info("ML model loaded from %s", MODEL_PATH)
+    log.info("ML model loaded")
 except Exception:
     model = None
-    log.warning("Model not found — falling back to rule-based scoring. Run train_model.py first.")
+    log.warning("Model not found — using rule-based fallback")
 
-# ── In-memory scan log ────────────────────────────────────────────────────────
+# ── In-memory scan log (fallback when DB is unavailable) ─────────────────────
 scan_log: deque = deque(maxlen=100)
+_scan_log_lock = threading.Lock()
 
 # ── Known phishing domains ────────────────────────────────────────────────────
 KNOWN_PHISHING_DOMAINS = {
@@ -69,54 +84,63 @@ KNOWN_PHISHING_DOMAINS = {
     "netflix-billing.update-info.com", "bankofamerica.secure-login.xyz",
 }
 
-URL_RE = re.compile(r'^https?://', re.IGNORECASE)
-MAX_URL_LEN = 2048
+URL_RE  = re.compile(r'^https?://', re.IGNORECASE)
+MAX_URL = 2048
 
 # ── Security headers ──────────────────────────────────────────────────────────
 @app.after_request
 def set_security_headers(response):
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    if request.path.startswith("/analyze") or request.path.startswith("/recent") or request.path.startswith("/health"):
-        response.headers["Cache-Control"] = "no-store"
+    h = response.headers
+    h["X-Content-Type-Options"]  = "nosniff"
+    h["X-Frame-Options"]         = "SAMEORIGIN"
+    h["X-XSS-Protection"]        = "1; mode=block"
+    h["Referrer-Policy"]         = "strict-origin-when-cross-origin"
+    h["Permissions-Policy"]      = "geolocation=(), microphone=(), camera=()"
+    # No caching for API responses
+    if request.path.startswith(("/analyze", "/recent", "/health", "/stats", "/search")):
+        h["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        h["Pragma"]        = "no-cache"
+    else:
+        # Cache static assets for 1 hour
+        h["Cache-Control"] = "public, max-age=3600"
     return response
 
-# ── Request logging ───────────────────────────────────────────────────────────
+# ── Request timing ────────────────────────────────────────────────────────────
 @app.before_request
-def log_request():
+def start_timer():
     g.start = time.monotonic()
 
 @app.after_request
 def log_response(response):
-    duration = round((time.monotonic() - g.start) * 1000, 1)
-    log.info("%s %s %s %sms", request.method, request.path, response.status_code, duration)
+    ms = round((time.monotonic() - g.start) * 1000, 1)
+    log.info("%s %s %s %sms", request.method, request.path, response.status_code, ms)
     return response
 
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(_):
-    # Only serve index.html for non-API routes
     if not request.path.startswith(("/analyze", "/recent", "/health", "/stats", "/search")):
         try:
-            return send_from_directory(os.path.abspath(FRONTEND), "index.html")
+            return send_from_directory(FRONTEND, "index.html")
         except Exception:
             pass
     return jsonify({"error": "Not found"}), 404
 
+@app.errorhandler(405)
+def method_not_allowed(_):
+    return jsonify({"error": "Method not allowed"}), 405
+
 @app.errorhandler(429)
 def rate_limited(_):
-    return jsonify({"error": "Too many requests. Please slow down."}), 429
+    return jsonify({"error": "Too many requests — please slow down"}), 429
 
 @app.errorhandler(413)
 def too_large(_):
-    return jsonify({"error": "Request too large"}), 413
+    return jsonify({"error": "Request body too large"}), 413
 
 @app.errorhandler(500)
 def server_error(e):
-    log.error("Internal error: %s", e)
+    log.error("Unhandled error: %s", e, exc_info=True)
     return jsonify({"error": "Internal server error"}), 500
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -133,23 +157,22 @@ def _check_known_list(url: str) -> bool:
     try:
         import tldextract
         ext = tldextract.extract(url)
-        domain = f"{ext.domain}.{ext.suffix}".lower()
-        return domain in KNOWN_PHISHING_DOMAINS
+        return f"{ext.domain}.{ext.suffix}".lower() in KNOWN_PHISHING_DOMAINS
     except Exception:
         return False
 
-def _rule_based_score(features: dict) -> float:
-    score = 0
-    if features["has_ip"]:                score += 25
-    if not features["has_https"]:         score += 15
-    if features["brand_similarity"]:      score += 30
-    if features["has_suspicious_keyword"]:score += 15
-    if features["num_at"] > 0:            score += 20
-    if features["double_slash_redirect"]: score += 10
-    if features["url_length"] > 75:       score += 10
-    if features["num_hyphens"] > 3:       score += 10
-    if features["subdomain_count"] > 2:   score += 10
-    return min(float(score), 99.0)
+def _rule_based_score(f: dict) -> float:
+    s = 0
+    if f["has_ip"]:                 s += 25
+    if not f["has_https"]:          s += 15
+    if f["brand_similarity"]:       s += 30
+    if f["has_suspicious_keyword"]: s += 15
+    if f["num_at"] > 0:             s += 20
+    if f["double_slash_redirect"]:  s += 10
+    if f["url_length"] > 75:        s += 10
+    if f["num_hyphens"] > 3:        s += 10
+    if f["subdomain_count"] > 2:    s += 10
+    return min(float(s), 99.0)
 
 def _analyze_url_internal(url: str) -> dict | None:
     if not URL_RE.match(url):
@@ -158,45 +181,45 @@ def _analyze_url_internal(url: str) -> dict | None:
     if not features:
         return None
 
-    confirmed = _check_known_list(url) or _check_threat_intel(url)
+    confirmed  = _check_known_list(url) or _check_threat_intel(url)
 
     if model is not None:
-        arr = features_to_array(features).reshape(1, -1)
-        prob = float(model.predict_proba(arr)[0][1])
+        arr        = features_to_array(features).reshape(1, -1)
+        prob       = float(model.predict_proba(arr)[0][1])
         confidence = round(prob * 100, 1)
     else:
         confidence = _rule_based_score(features)
-        prob = confidence / 100.0
+        prob       = confidence / 100.0
 
     if confirmed:
         confidence = max(confidence, 97.0)
-        prob = max(prob, 0.97)
+        prob       = max(prob, 0.97)
 
     if prob >= 0.75 or confirmed:
-        risk, verdict = "HIGH", "PHISHING"
+        risk, verdict = "HIGH",   "PHISHING"
     elif prob >= 0.45:
         risk, verdict = "MEDIUM", "SUSPICIOUS"
     else:
-        risk, verdict = "LOW", "SAFE"
+        risk, verdict = "LOW",    "SAFE"
 
     reasons = get_suspicious_reasons(features)
     if confirmed:
         reasons.insert(0, "URL found in threat intelligence database")
 
     return {
-        "url": url,
-        "verdict": verdict,
-        "risk": risk,
-        "confidence": confidence,
-        "confirmed_phishing": confirmed,
-        "reasons": reasons,
+        "url":               url,
+        "verdict":           verdict,
+        "risk":              risk,
+        "confidence":        confidence,
+        "confirmed_phishing":confirmed,
+        "reasons":           reasons,
         "features": {
-            "url_length": features["url_length"],
-            "has_https": bool(features["has_https"]),
-            "has_ip": bool(features["has_ip"]),
-            "subdomain_count": features["subdomain_count"],
+            "url_length":          features["url_length"],
+            "has_https":           bool(features["has_https"]),
+            "has_ip":              bool(features["has_ip"]),
+            "subdomain_count":     features["subdomain_count"],
             "suspicious_keywords": bool(features["has_suspicious_keyword"]),
-            "brand_similarity": bool(features["brand_similarity"]),
+            "brand_similarity":    bool(features["brand_similarity"]),
         },
         "time": datetime.datetime.now(datetime.UTC).isoformat(),
     }
@@ -225,7 +248,8 @@ def _seed_log():
         result = _analyze_url_internal(url)
         if result:
             result["time"] = (base_time - datetime.timedelta(minutes=i * 4)).isoformat()
-            scan_log.append(result)
+            with _scan_log_lock:
+                scan_log.append(result)
         time.sleep(0.05)
     log.info("Scan log seeded with %d entries", len(scan_log))
 
@@ -234,17 +258,16 @@ def _seed_log():
 @limiter.limit("30 per minute")
 def analyze():
     data = request.get_json(silent=True)
-    if not data:
+    if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON body"}), 400
 
     url = str(data.get("url", "")).strip()
     if not url:
         return jsonify({"error": "No URL provided"}), 400
-    if len(url) > MAX_URL_LEN:
-        return jsonify({"error": f"URL too long (max {MAX_URL_LEN} chars)"}), 400
-    # Block obviously non-URL input
-    if "\n" in url or "\r" in url or "\x00" in url:
-        return jsonify({"error": "Invalid URL"}), 400
+    if len(url) > MAX_URL:
+        return jsonify({"error": f"URL too long (max {MAX_URL} chars)"}), 400
+    if any(c in url for c in ("\n", "\r", "\x00")):
+        return jsonify({"error": "Invalid URL characters"}), 400
 
     if not URL_RE.match(url):
         url = "http://" + url
@@ -253,8 +276,9 @@ def analyze():
     if not result:
         return jsonify({"error": "Could not parse URL"}), 422
 
-    scan_log.appendleft(result)
-    save_scan(result)  # Persist to MongoDB
+    with _scan_log_lock:
+        scan_log.appendleft(result)
+    save_scan(result)
     log.info("Analyzed %s → %s (%.1f%%)", url, result["verdict"], result["confidence"])
     return jsonify(result)
 
@@ -262,10 +286,11 @@ def analyze():
 @limiter.exempt
 def health():
     return jsonify({
-        "status": "ok",
-        "model_loaded": model is not None,
+        "status":        "ok",
+        "model_loaded":  model is not None,
+        "db_connected":  is_connected(),
         "scan_log_size": len(scan_log),
-        "db_connected": is_connected(),
+        "version":       "1.0.0",
     })
 
 @app.route("/recent", methods=["GET"])
@@ -275,23 +300,24 @@ def recent():
         limit = min(int(request.args.get("limit", 20)), 100)
     except ValueError:
         limit = 20
-    # Prefer MongoDB, fall back to in-memory log
     db_results = get_recent_scans(limit)
-    return jsonify(db_results if db_results else list(scan_log)[:limit])
+    with _scan_log_lock:
+        fallback = list(scan_log)[:limit]
+    return jsonify(db_results if db_results else fallback)
 
 @app.route("/stats", methods=["GET"])
 @limiter.limit("60 per minute")
 def stats():
-    """Aggregate scan statistics from MongoDB."""
     return jsonify(get_stats())
 
 @app.route("/search", methods=["GET"])
-@limiter.limit("30 per minute")
+@limiter.limit("20 per minute")
 def search():
-    """Search scan history by URL substring."""
     q = request.args.get("q", "").strip()
     if not q or len(q) < 3:
         return jsonify({"error": "Query must be at least 3 characters"}), 400
+    if len(q) > 200:
+        return jsonify({"error": "Query too long"}), 400
     try:
         limit = min(int(request.args.get("limit", 20)), 50)
     except ValueError:
@@ -304,8 +330,7 @@ def index():
 
 @app.route("/<path:filename>")
 def static_files(filename):
-    # Block path traversal
-    if ".." in filename:
+    if ".." in filename or filename.startswith("/"):
         return jsonify({"error": "Forbidden"}), 403
     return send_from_directory(FRONTEND, filename)
 
