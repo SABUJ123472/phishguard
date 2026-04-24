@@ -1,7 +1,7 @@
 // Auto-detect API base: same origin when deployed, localhost when developing
 const API = (location.hostname === "127.0.0.1" || location.hostname === "localhost")
   ? "http://127.0.0.1:5000"
-  : "https://phishguard.onrender.com";  // Replace with YOUR Render URL
+  : "https://phishguard-sneg.onrender.com";
 
 // ── Shared nav highlight + hamburger ──
 document.addEventListener("DOMContentLoaded", () => {

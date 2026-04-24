@@ -231,51 +231,42 @@ async function loadDashboard() {
     allLogs = [];
   }
 
-  // Merge with local history
-  const local = History.get().map(h => ({
-    url: h.url, verdict: h.verdict,
-    confidence: h.confidence, time: timeAgo(h.time),
-    source: "local"
-  }));
+  // Load real stats from MongoDB
+  let stats = { total: 0, phishing: 0, suspicious: 0, safe: 0 };
+  try {
+    const sr = await fetch(`${API}/stats`);
+    stats = await sr.json();
+  } catch {
+    // Fall back to counting from logs
+    stats.total      = allLogs.length;
+    stats.phishing   = allLogs.filter(l => l.verdict === "PHISHING").length;
+    stats.suspicious = allLogs.filter(l => l.verdict === "SUSPICIOUS").length;
+    stats.safe       = allLogs.filter(l => l.verdict === "SAFE").length;
+  }
 
-  const combined = [
-    ...allLogs.map(l => ({ ...l, source: "server" })),
-    ...local
-  ];
+  document.getElementById("stat-total").textContent      = stats.total;
+  document.getElementById("stat-phishing").textContent   = stats.phishing;
+  document.getElementById("stat-suspicious").textContent = stats.suspicious;
+  document.getElementById("stat-safe").textContent       = stats.safe;
 
-  // Stats
-  const total      = combined.length;
-  const phishing   = combined.filter(l => l.verdict === "PHISHING").length;
-  const suspicious = combined.filter(l => l.verdict === "SUSPICIOUS").length;
-  const safe       = combined.filter(l => l.verdict === "SAFE").length;
-
-  document.getElementById("stat-total").textContent     = total;
-  document.getElementById("stat-phishing").textContent  = phishing;
-  document.getElementById("stat-suspicious").textContent= suspicious;
-  document.getElementById("stat-safe").textContent      = safe;
-
+  const total = stats.total || 1;
   // Bar chart
-  const features = [
-    { label: "Phishing",   val: phishing,   color: "var(--red)",    max: total },
-    { label: "Suspicious", val: suspicious, color: "var(--yellow)", max: total },
-    { label: "Safe",       val: safe,       color: "var(--green)",  max: total },
+  const breakdown = [
+    { label: "Phishing",   val: stats.phishing,   color: "var(--red)" },
+    { label: "Suspicious", val: stats.suspicious, color: "var(--yellow)" },
+    { label: "Safe",       val: stats.safe,       color: "var(--green)" },
   ];
-  document.getElementById("bar-chart").innerHTML = features.map(f => `
+  document.getElementById("bar-chart").innerHTML = breakdown.map(f => `
     <div class="bar-row">
       <div class="bar-label">${f.label}</div>
       <div class="bar-track">
-        <div class="bar-fill" style="background:${f.color}; width:${total ? (f.val/total*100).toFixed(1) : 0}%"></div>
+        <div class="bar-fill" style="background:${f.color}; width:${(f.val/total*100).toFixed(1)}%"></div>
       </div>
       <div class="bar-val">${f.val}</div>
     </div>`).join("");
 
-  // Donut chart
-  drawDonut(phishing, suspicious, safe, total);
-
-  // Threat log
-  filterLog("ALL", combined);
-
-  // My history
+  drawDonut(stats.phishing, stats.suspicious, stats.safe, stats.total);
+  filterLog("ALL", allLogs);
   renderMyHistory();
 
   document.getElementById("refresh-time").textContent =

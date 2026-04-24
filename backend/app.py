@@ -15,6 +15,14 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from model import extract_features, features_to_array, get_suspicious_reasons
+from database import save_scan, get_recent_scans, get_stats, search_scans, is_connected
+
+# Load .env for local development
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required in production (Render uses env vars directly)
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -244,6 +252,7 @@ def analyze():
         return jsonify({"error": "Could not parse URL"}), 422
 
     scan_log.appendleft(result)
+    save_scan(result)  # Persist to MongoDB
     log.info("Analyzed %s → %s (%.1f%%)", url, result["verdict"], result["confidence"])
     return jsonify(result)
 
@@ -254,6 +263,7 @@ def health():
         "status": "ok",
         "model_loaded": model is not None,
         "scan_log_size": len(scan_log),
+        "db_connected": is_connected(),
     })
 
 @app.route("/recent", methods=["GET"])
@@ -263,7 +273,28 @@ def recent():
         limit = min(int(request.args.get("limit", 20)), 100)
     except ValueError:
         limit = 20
-    return jsonify(list(scan_log)[:limit])
+    # Prefer MongoDB, fall back to in-memory log
+    db_results = get_recent_scans(limit)
+    return jsonify(db_results if db_results else list(scan_log)[:limit])
+
+@app.route("/stats", methods=["GET"])
+@limiter.limit("60 per minute")
+def stats():
+    """Aggregate scan statistics from MongoDB."""
+    return jsonify(get_stats())
+
+@app.route("/search", methods=["GET"])
+@limiter.limit("30 per minute")
+def search():
+    """Search scan history by URL substring."""
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 3:
+        return jsonify({"error": "Query must be at least 3 characters"}), 400
+    try:
+        limit = min(int(request.args.get("limit", 20)), 50)
+    except ValueError:
+        limit = 20
+    return jsonify(search_scans(q, limit))
 
 @app.route("/")
 def index():
