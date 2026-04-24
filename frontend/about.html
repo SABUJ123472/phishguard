@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="About PhishGuard — AI-powered phishing detection platform." />
+  <title>About — PhishGuard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .about-wrap { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+    .hero-about {
+      text-align: center;
+      padding: 3rem 1rem 2.5rem;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(0,212,255,0.1) 0%, transparent 70%);
+      border-radius: 16px;
+      margin-bottom: 2.5rem;
+      border: 1px solid var(--border);
+    }
+    .hero-about .big-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .hero-about h1 { font-size: 1.8rem; color: #fff; margin-bottom: 0.75rem; }
+    .hero-about p  { color: var(--text-dim); max-width: 600px; margin: 0 auto; line-height: 1.7; }
+
+    /* Section heading */
+    .sec-title {
+      font-size: 1.1rem; color: #fff; font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+
+    /* Tech stack */
+    .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+    .tech-item {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .tech-item:hover { border-color: var(--accent); }
+    .tech-item .t-icon { font-size: 1.8rem; margin-bottom: 0.4rem; }
+    .tech-item .t-name { font-size: 0.88rem; color: #fff; font-weight: 600; }
+    .tech-item .t-role { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* Feature list */
+    .feat-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .feat-row {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+    .feat-row .f-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .feat-row .f-title { color: #fff; font-weight: 600; margin-bottom: 2px; }
+    .feat-row .f-desc  { color: var(--text-dim); font-size: 0.82rem; }
+
+    /* ML model table */
+    .model-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .model-table th {
+      background: var(--bg3); color: var(--text-dim);
+      padding: 0.6rem 1rem; text-align: left;
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .model-table td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid rgba(30,45,80,0.4);
+      color: var(--text);
+    }
+    .model-table tr:hover td { background: rgba(0,212,255,0.03); }
+
+    /* Timeline */
+    .timeline { display: flex; flex-direction: column; gap: 0; }
+    .tl-item {
+      display: flex; gap: 1rem;
+      padding-bottom: 1.5rem;
+      position: relative;
+    }
+    .tl-item:not(:last-child)::before {
+      content: "";
+      position: absolute; left: 19px; top: 40px;
+      width: 2px; bottom: 0;
+      background: var(--border);
+    }
+    .tl-dot {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0; z-index: 1;
+    }
+    .tl-content { padding-top: 0.5rem; }
+    .tl-content h4 { color: #fff; font-size: 0.92rem; margin-bottom: 0.25rem; }
+    .tl-content p  { color: var(--text-dim); font-size: 0.82rem; }
+
+    /* CTA */
+    .about-cta {
+      text-align: center;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      margin-top: 2rem;
+    }
+    .about-cta h2 { color: #fff; font-size: 1.4rem; margin-bottom: 0.5rem; }
+    .about-cta p  { color: var(--text-dim); margin-bottom: 1.5rem; }
+    .cta-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><span class="shield">🛡</span>PhishGuard</div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/scanner.html">Scanner</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/about.html">About</a>
+  </div>
+</nav>
+
+<div class="about-wrap">
+
+  <!-- Hero -->
+  <div class="hero-about">
+    <div class="big-icon">🛡️</div>
+    <h1>Intelligent Real-Time Phishing<br>Threat Analysis Platform</h1>
+    <p>
+      PhishGuard is an AI-powered cybersecurity tool that detects phishing URLs in real time
+      using machine learning, domain analysis, and live threat intelligence feeds.
+      Built to protect users from credential theft, identity fraud, and malicious websites.
+    </p>
+  </div>
+
+  <!-- Features -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="sec-title">🔍 Core Features</div>
+    <div class="feat-list">
+      <div class="feat-row">
+        <div class="f-icon">🤖</div>
+        <div>
+          <div class="f-title">Machine Learning Detection</div>
+          <div class="f-desc">Random Forest classifier trained on phishing datasets. Extracts 20+ URL features and outputs a phishing probability score.</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="f-icon">🧬</div>
+        <div>
+          <div class="f-title">Brand Similarity (Typosquatting)</div>
+          <div class="f-desc">Levenshtein distance algorithm detects domains impersonating PayPal, Amazon, Google, Apple, Microsoft, and 11 other major brands.</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="f-icon">🌐</div>
+        <div>
+          <div class="f-title">Threat Intelligence</div>
+          <div class="f-desc">Real-time cross-reference against OpenPhish feed and an offline known-phishing domain list. Confirmed phishing URLs are flagged immediately.</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="f-icon">📊</div>
+        <div>
+          <div class="f-title">Entropy & Heuristic Analysis</div>
+          <div class="f-desc">Measures domain randomness, checks for IP-based URLs, suspicious keywords, redirect patterns, excessive subdomains, and missing HTTPS.</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="f-icon">📷</div>
+        <div>
+          <div class="f-title">QR Code Scanner</div>
+          <div class="f-desc">Upload a QR code image to extract the embedded URL and run it through the full phishing analysis pipeline.</div>
+        </div>
+      </div>
+      <div class="feat-row">
+        <div class="f-icon">📊</div>
+        <div>
+          <div class="f-title">Real-Time Dashboard</div>
+          <div class="f-desc">Live threat log, scan statistics, verdict distribution chart, and admin tools including data export and backend health check.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="sec-title">⚙ Technology Stack</div>
+    <div class="tech-grid">
+      <div class="tech-item"><div class="t-icon">🐍</div><div class="t-name">Python</div><div class="t-role">Backend language</div></div>
+      <div class="tech-item"><div class="t-icon">🌶</div><div class="t-name">Flask</div><div class="t-role">REST API server</div></div>
+      <div class="tech-item"><div class="t-icon">🤖</div><div class="t-name">Scikit-learn</div><div class="t-role">ML model</div></div>
+      <div class="tech-item"><div class="t-icon">🌲</div><div class="t-name">Random Forest</div><div class="t-role">Classifier</div></div>
+      <div class="tech-item"><div class="t-icon">🌐</div><div class="t-name">tldextract</div><div class="t-role">Domain parsing</div></div>
+      <div class="tech-item"><div class="t-icon">🔒</div><div class="t-name">OpenPhish</div><div class="t-role">Threat intel</div></div>
+      <div class="tech-item"><div class="t-icon">🎨</div><div class="t-name">HTML/CSS/JS</div><div class="t-role">Frontend</div></div>
+      <div class="tech-item"><div class="t-icon">📷</div><div class="t-name">jsQR</div><div class="t-role">QR decoding</div></div>
+    </div>
+  </div>
+
+  <!-- ML Model Details -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="sec-title">🌲 ML Model — Feature Set</div>
+    <div style="overflow-x:auto;">
+      <table class="model-table">
+        <thead>
+          <tr><th>#</th><th>Feature</th><th>Description</th><th>Weight</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>URL Length</td><td>Total character count of the URL</td><td>High</td></tr>
+          <tr><td>2</td><td>Domain Length</td><td>Length of the domain name only</td><td>Medium</td></tr>
+          <tr><td>3</td><td>Dot Count</td><td>Number of dots (subdomain abuse)</td><td>Medium</td></tr>
+          <tr><td>4</td><td>Hyphen Count</td><td>Hyphens in domain (phishing tactic)</td><td>High</td></tr>
+          <tr><td>5</td><td>@ Symbol</td><td>Presence of @ in URL</td><td>Critical</td></tr>
+          <tr><td>6</td><td>Has IP</td><td>IP address used instead of domain</td><td>Critical</td></tr>
+          <tr><td>7</td><td>Has HTTPS</td><td>SSL/TLS encryption present</td><td>High</td></tr>
+          <tr><td>8</td><td>Suspicious Keywords</td><td>login, verify, secure, paypal, etc.</td><td>High</td></tr>
+          <tr><td>9</td><td>Brand Similarity</td><td>Levenshtein distance to known brands</td><td>Critical</td></tr>
+          <tr><td>10</td><td>Subdomain Count</td><td>Number of subdomains</td><td>Medium</td></tr>
+          <tr><td>11</td><td>Domain Entropy</td><td>Randomness of domain characters</td><td>Medium</td></tr>
+          <tr><td>12</td><td>Double Slash</td><td>Redirect via // pattern</td><td>High</td></tr>
+          <tr><td>13</td><td>Digit Count</td><td>Numbers in domain name</td><td>Low</td></tr>
+          <tr><td>14</td><td>Path Length</td><td>Length of URL path</td><td>Low</td></tr>
+          <tr><td>15–20</td><td>Special Chars</td><td>?, =, &, %, /, slashes count</td><td>Medium</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- How to run -->
+  <div class="card" style="margin-bottom:1.5rem;">
+    <div class="sec-title">🚀 How to Run</div>
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot">1</div>
+        <div class="tl-content">
+          <h4>Install dependencies</h4>
+          <p><code style="background:var(--bg3); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.82rem;">cd backend &amp;&amp; pip install -r requirements.txt</code></p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot">2</div>
+        <div class="tl-content">
+          <h4>Train the ML model</h4>
+          <p><code style="background:var(--bg3); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.82rem;">python train_model.py</code> — generates <code style="background:var(--bg3); padding:0.2rem 0.4rem; border-radius:4px; font-size:0.82rem;">phishing_model.pkl</code></p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot">3</div>
+        <div class="tl-content">
+          <h4>Start the Flask API</h4>
+          <p><code style="background:var(--bg3); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.82rem;">python app.py</code> — runs on <code style="background:var(--bg3); padding:0.2rem 0.4rem; border-radius:4px; font-size:0.82rem;">http://127.0.0.1:5000</code></p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot">4</div>
+        <div class="tl-content">
+          <h4>Open the frontend</h4>
+          <p>Open <code style="background:var(--bg3); padding:0.2rem 0.5rem; border-radius:4px; font-size:0.82rem;">frontend/index.html</code> in your browser — no build step needed.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="about-cta">
+    <h2>Ready to detect phishing threats?</h2>
+    <p>Start scanning suspicious URLs with AI-powered analysis</p>
+    <div class="cta-btns">
+      <a href="/scanner.html" class="btn btn-primary">🔍 Open Scanner</a>
+      <a href="/dashboard.html" class="btn btn-outline">📊 View Dashboard</a>
+    </div>
+  </div>
+
+</div>
+
+<footer>&copy; 2025 PhishGuard — Intelligent Phishing Threat Analysis Platform</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

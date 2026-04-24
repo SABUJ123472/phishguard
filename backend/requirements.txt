@@ -1,0 +1,9 @@
+flask>=3.0,<4
+flask-cors>=4.0,<5
+flask-limiter>=4.0,<5
+scikit-learn>=1.5,<2
+numpy>=1.26,<3
+requests>=2.32,<3
+tldextract>=5.1,<6
+joblib>=1.4,<2
+gunicorn>=22.0,<24

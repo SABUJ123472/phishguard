@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="Real-time phishing threat dashboard." />
+  <title>Dashboard — PhishGuard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .dash-wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    /* Top bar */
+    .dash-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .dash-topbar h1 { font-size: 1.5rem; color: #fff; }
+    .live-dot {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.8rem; color: var(--green);
+    }
+    .live-dot::before {
+      content: "";
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    /* Chart area */
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .chart-title {
+      font-size: 0.82rem; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 1.25rem;
+    }
+
+    /* Bar chart */
+    .bar-chart { display: flex; flex-direction: column; gap: 0.6rem; }
+    .bar-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; }
+    .bar-label { width: 90px; color: var(--text-dim); text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; background: var(--bg3); border-radius: 99px; height: 10px; overflow: hidden; }
+    .bar-fill   { height: 100%; border-radius: 99px; transition: width 0.8s ease; }
+    .bar-val    { width: 40px; color: var(--text); font-weight: 600; }
+
+    /* Donut chart (CSS) */
+    .donut-wrap { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+    .donut {
+      width: 120px; height: 120px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .donut-legend { display: flex; flex-direction: column; gap: 0.5rem; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Threat log */
+    .threat-log { display: flex; flex-direction: column; gap: 0.5rem; max-height: 380px; overflow-y: auto; }
+    .log-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.7rem 1rem;
+      background: var(--bg3);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.83rem;
+      transition: border-color 0.2s;
+    }
+    .log-item:hover { border-color: var(--accent2); }
+    .log-url { flex: 1; font-family: monospace; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .log-time { color: var(--text-dim); white-space: nowrap; font-size: 0.75rem; }
+
+    /* Admin panel */
+    .admin-section { margin-top: 2rem; }
+    .admin-section h3 { color: #fff; font-size: 1rem; margin-bottom: 1rem; }
+
+    .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+    .admin-action {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+      text-align: center;
+    }
+    .admin-action:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .admin-action .icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .admin-action h4 { color: #fff; font-size: 0.88rem; margin-bottom: 0.25rem; }
+    .admin-action p  { color: var(--text-dim); font-size: 0.78rem; }
+
+    /* Refresh btn */
+    #refresh-time { font-size: 0.78rem; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><span class="shield">🛡</span>PhishGuard</div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/scanner.html">Scanner</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/about.html">About</a>
+  </div>
+</nav>
+
+<div class="dash-wrap">
+
+  <div class="dash-topbar">
+    <div>
+      <h1>📊 Threat Dashboard</h1>
+      <span id="refresh-time">Last updated: just now</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:1rem;">
+      <span class="live-dot">Live Monitoring</span>
+      <button class="btn btn-outline" style="padding:0.45rem 1rem; font-size:0.85rem;" onclick="loadDashboard()">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="grid-4" style="margin-bottom:1.5rem;" id="stat-cards">
+    <div class="stat-card">
+      <div class="stat-icon">🔍</div>
+      <div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Scans</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:var(--red)">🚨</div>
+      <div><div class="stat-value" id="stat-phishing" style="color:var(--red)">—</div><div class="stat-label">Phishing Detected</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:var(--yellow)">⚠️</div>
+      <div><div class="stat-value" id="stat-suspicious" style="color:var(--yellow)">—</div><div class="stat-label">Suspicious</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="color:var(--green)">✅</div>
+      <div><div class="stat-value" id="stat-safe" style="color:var(--green)">—</div><div class="stat-label">Safe URLs</div></div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="grid-2" style="margin-bottom:1.5rem;">
+
+    <!-- Detection breakdown bar chart -->
+    <div class="chart-card">
+      <div class="chart-title">Detection Breakdown</div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+
+    <!-- Verdict distribution donut -->
+    <div class="chart-card">
+      <div class="chart-title">Verdict Distribution</div>
+      <div class="donut-wrap">
+        <canvas id="donut-canvas" width="120" height="120"></canvas>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Threat log -->
+  <div class="chart-card" style="margin-bottom:1.5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+      <div class="chart-title" style="margin:0;">Real-Time Threat Log</div>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-outline" style="padding:0.3rem 0.75rem; font-size:0.78rem;" onclick="filterLog('ALL')">All</button>
+        <button class="btn btn-outline" style="padding:0.3rem 0.75rem; font-size:0.78rem;" onclick="filterLog('PHISHING')">Phishing</button>
+        <button class="btn btn-outline" style="padding:0.3rem 0.75rem; font-size:0.78rem;" onclick="filterLog('SAFE')">Safe</button>
+      </div>
+    </div>
+    <div class="threat-log" id="threat-log"></div>
+  </div>
+
+  <!-- My scan history -->
+  <div class="chart-card" style="margin-bottom:1.5rem;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+      <div class="chart-title" style="margin:0;">My Scan History</div>
+      <a href="/scanner.html" class="btn btn-primary" style="padding:0.4rem 0.9rem; font-size:0.82rem;">+ New Scan</a>
+    </div>
+    <div id="my-history"></div>
+  </div>
+
+  <!-- Admin panel -->
+  <div class="admin-section">
+    <h3>⚙ Admin Tools</h3>
+    <div class="admin-grid">
+      <div class="admin-action" onclick="exportData()">
+        <div class="icon">📥</div>
+        <h4>Export Data</h4>
+        <p>Download scan history as JSON</p>
+      </div>
+      <div class="admin-action" onclick="clearHistory()">
+        <div class="icon">🗑</div>
+        <h4>Clear History</h4>
+        <p>Remove all local scan records</p>
+      </div>
+      <div class="admin-action" onclick="checkBackend()">
+        <div class="icon">🔌</div>
+        <h4>Backend Status</h4>
+        <p>Check if Flask API is online</p>
+      </div>
+      <div class="admin-action" onclick="window.open(API+'/recent','_blank')">
+        <div class="icon">🌐</div>
+        <h4>Raw API</h4>
+        <p>View raw threat log from backend</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>&copy; 2025 PhishGuard — Intelligent Phishing Threat Analysis Platform</footer>
+
+<script src="js/main.js"></script>
+<script>
+let allLogs = [];
+
+async function loadDashboard() {
+  // Load backend recent logs
+  try {
+    const res = await fetch(`${API}/recent`);
+    allLogs = await res.json();
+  } catch {
+    allLogs = [];
+  }
+
+  // Merge with local history
+  const local = History.get().map(h => ({
+    url: h.url, verdict: h.verdict,
+    confidence: h.confidence, time: timeAgo(h.time),
+    source: "local"
+  }));
+
+  const combined = [
+    ...allLogs.map(l => ({ ...l, source: "server" })),
+    ...local
+  ];
+
+  // Stats
+  const total      = combined.length;
+  const phishing   = combined.filter(l => l.verdict === "PHISHING").length;
+  const suspicious = combined.filter(l => l.verdict === "SUSPICIOUS").length;
+  const safe       = combined.filter(l => l.verdict === "SAFE").length;
+
+  document.getElementById("stat-total").textContent     = total;
+  document.getElementById("stat-phishing").textContent  = phishing;
+  document.getElementById("stat-suspicious").textContent= suspicious;
+  document.getElementById("stat-safe").textContent      = safe;
+
+  // Bar chart
+  const features = [
+    { label: "Phishing",   val: phishing,   color: "var(--red)",    max: total },
+    { label: "Suspicious", val: suspicious, color: "var(--yellow)", max: total },
+    { label: "Safe",       val: safe,       color: "var(--green)",  max: total },
+  ];
+  document.getElementById("bar-chart").innerHTML = features.map(f => `
+    <div class="bar-row">
+      <div class="bar-label">${f.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="background:${f.color}; width:${total ? (f.val/total*100).toFixed(1) : 0}%"></div>
+      </div>
+      <div class="bar-val">${f.val}</div>
+    </div>`).join("");
+
+  // Donut chart
+  drawDonut(phishing, suspicious, safe, total);
+
+  // Threat log
+  filterLog("ALL", combined);
+
+  // My history
+  renderMyHistory();
+
+  document.getElementById("refresh-time").textContent =
+    "Last updated: " + new Date().toLocaleTimeString();
+}
+
+function filterLog(type, data) {
+  const logs = data || allLogs;
+  const filtered = type === "ALL" ? logs : logs.filter(l => l.verdict === type);
+  const el = document.getElementById("threat-log");
+  if (!filtered.length) {
+    el.innerHTML = `<div style="text-align:center; color:var(--text-dim); padding:2rem;">No entries</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(l => `
+    <div class="log-item">
+      <span>${l.verdict === "PHISHING" ? "🚨" : l.verdict === "SUSPICIOUS" ? "⚠️" : "✅"}</span>
+      ${verdictBadge(l.verdict)}
+      <span class="log-url" title="${l.url}">${truncateURL(l.url, 60)}</span>
+      <span style="color:var(--accent); font-size:0.8rem; white-space:nowrap;">${l.confidence}%</span>
+      <span class="log-time">${l.time || ""}</span>
+    </div>`).join("");
+}
+
+function renderMyHistory() {
+  const list = History.get();
+  const el = document.getElementById("my-history");
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center; color:var(--text-dim); padding:1.5rem;">No local scans yet. <a href="scanner.html">Start scanning →</a></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>URL</th><th>Verdict</th><th>Confidence</th><th>Time</th><th></th></tr></thead>
+        <tbody>${list.map(item => `
+          <tr>
+            <td><span class="url-display" style="font-size:0.78rem;">${truncateURL(item.url, 50)}</span></td>
+            <td>${verdictBadge(item.verdict)}</td>
+            <td>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <div class="progress-wrap" style="width:80px;">
+                  <div class="progress-bar progress-${verdictColor(item.verdict)}" style="width:${item.confidence}%"></div>
+                </div>
+                <span style="font-size:0.8rem;">${item.confidence}%</span>
+              </div>
+            </td>
+            <td style="color:var(--text-dim); font-size:0.8rem;">${timeAgo(item.time)}</td>
+            <td><a href="scanner.html" class="btn btn-outline" style="padding:0.25rem 0.6rem; font-size:0.75rem;"
+              onclick="sessionStorage.setItem('rescan','${item.url.replace(/'/g,"\\'")}')">Re-scan</a></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// ── Donut chart via Canvas ──
+function drawDonut(phishing, suspicious, safe, total) {
+  const canvas = document.getElementById("donut-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 120, 120);
+
+  if (total === 0) {
+    ctx.beginPath();
+    ctx.arc(60, 60, 50, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    document.getElementById("donut-legend").innerHTML =
+      `<div style="color:var(--text-dim); font-size:0.82rem;">No data yet</div>`;
+    return;
+  }
+
+  const segments = [
+    { val: phishing,   color: "#ff3860", label: "Phishing" },
+    { val: suspicious, color: "#ffdd57", label: "Suspicious" },
+    { val: safe,       color: "#00ff88", label: "Safe" },
+  ].filter(s => s.val > 0);
+
+  let start = -Math.PI / 2;
+  segments.forEach(seg => {
+    const angle = (seg.val / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(60, 60, 50, start, start + angle);
+    ctx.strokeStyle = seg.color;
+    ctx.lineWidth = 18;
+    ctx.stroke();
+    start += angle;
+  });
+
+  // Center text
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 18px Segoe UI";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(total, 60, 60);
+
+  document.getElementById("donut-legend").innerHTML = segments.map(s => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${s.color}"></div>
+      <span>${s.label}: <strong>${s.val}</strong></span>
+    </div>`).join("");
+}
+
+// ── Admin actions ──
+function exportData() {
+  const data = History.get();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "phishguard_history.json";
+  a.click();
+}
+
+function clearHistory() {
+  if (confirm("Clear all local scan history?")) {
+    History.clear();
+    loadDashboard();
+  }
+}
+
+async function checkBackend() {
+  try {
+    const res = await fetch(`${API}/health`);
+    const data = await res.json();
+    alert(`✅ Backend Online\nStatus: ${data.status}\nML Model Loaded: ${data.model_loaded}`);
+  } catch {
+    alert("❌ Backend Offline\nMake sure Flask is running:\ncd backend && python app.py");
+  }
+}
+
+// ── Handle rescan from dashboard ──
+window.addEventListener("load", () => {
+  const url = sessionStorage.getItem("rescan");
+  if (url) {
+    sessionStorage.removeItem("rescan");
+    sessionStorage.setItem("last_url", url);
+  }
+  loadDashboard();
+});
+
+// Auto-refresh every 30s
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>

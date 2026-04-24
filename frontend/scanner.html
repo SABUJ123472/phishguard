@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="description" content="Scan any URL for phishing threats using AI and real-time threat intelligence." />
+  <title>URL Scanner — PhishGuard</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .scanner-wrap {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+    }
+
+    /* Input area */
+    .scan-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    .scan-box h2 { color: #fff; font-size: 1.3rem; margin-bottom: 0.4rem; }
+    .scan-box p  { color: var(--text-dim); font-size: 0.88rem; margin-bottom: 1.25rem; }
+
+    .scan-input-row {
+      display: flex; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .scan-input-row input {
+      flex: 1; min-width: 200px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #fff; font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .scan-input-row input:focus { border-color: var(--accent); }
+    .scan-input-row input::placeholder { color: var(--text-dim); }
+
+    /* Result panel */
+    #result-panel { display: none; }
+
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .verdict-big {
+      font-size: 1.6rem; font-weight: 800;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .verdict-safe       { color: var(--green); }
+    .verdict-suspicious { color: var(--yellow); }
+    .verdict-phishing   { color: var(--red); }
+
+    /* Confidence gauge */
+    .gauge-row {
+      display: flex; align-items: center; gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .conf-circle {
+      width: 90px; height: 90px;
+      border-radius: 50%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 4px solid;
+      flex-shrink: 0;
+    }
+    .conf-circle .pct  { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+    .conf-circle .lbl  { font-size: 0.65rem; color: var(--text-dim); }
+    .conf-safe       { border-color: var(--green);  color: var(--green); }
+    .conf-suspicious { border-color: var(--yellow); color: var(--yellow); }
+    .conf-phishing   { border-color: var(--red);    color: var(--red); }
+
+    /* Warning banner */
+    .warning-banner {
+      background: rgba(255,56,96,0.1);
+      border: 1px solid rgba(255,56,96,0.4);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex; gap: 1rem; align-items: flex-start;
+      margin-bottom: 1.5rem;
+    }
+    .warning-banner .icon { font-size: 2rem; flex-shrink: 0; }
+    .warning-banner h3 { color: var(--red); font-size: 1rem; margin-bottom: 0.25rem; }
+    .warning-banner p  { color: #ff9090; font-size: 0.88rem; }
+
+    /* Feature grid */
+    .feature-checks {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .fcheck {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.82rem;
+    }
+    .fcheck .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .dot-good { background: var(--green); }
+    .dot-bad  { background: var(--red); }
+    .dot-warn { background: var(--yellow); }
+
+    /* Reasons list */
+    .reasons-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .reasons-list li {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.88rem; color: var(--text);
+      padding: 0.5rem 0.75rem;
+      background: var(--bg3);
+      border-radius: 6px;
+      border-left: 3px solid var(--red);
+    }
+
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .tab-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-dim); font-size: 0.9rem;
+      padding: 0.6rem 1.2rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* QR scanner */
+    .qr-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .qr-area:hover { border-color: var(--accent); }
+    .qr-area input[type=file] { display: none; }
+    .qr-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><span class="shield">🛡</span>PhishGuard</div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/scanner.html">Scanner</a>
+    <a href="/dashboard.html">Dashboard</a>
+    <a href="/about.html">About</a>
+  </div>
+</nav>
+
+<div class="scanner-wrap">
+
+  <div class="page-header" style="padding:1.5rem 0 2rem; text-align:left;">
+    <h1 style="font-size:1.6rem;">🔍 URL Scanner</h1>
+    <p style="color:var(--text-dim)">Analyze any URL for phishing threats using AI + threat intelligence</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('url-tab', this)">🔗 URL Scan</button>
+    <button class="tab-btn" onclick="switchTab('qr-tab', this)">📷 QR Code</button>
+    <button class="tab-btn" onclick="switchTab('history-tab', this)">🕓 History</button>
+  </div>
+
+  <!-- URL Tab -->
+  <div id="url-tab" class="tab-panel active">
+    <div class="scan-box">
+      <h2>Enter URL to Analyze</h2>
+      <p>Paste any suspicious link — we'll check it against 20+ security indicators</p>
+      <div class="scan-input-row">
+        <input type="url" id="url-input" placeholder="https://example.com or http://suspicious-site.com" />
+        <button class="btn btn-primary" id="scan-btn" onclick="runScan()">
+          <span id="scan-btn-text">🔍 Scan URL</span>
+        </button>
+        <button class="btn btn-outline" onclick="clearAll()">✕ Clear</button>
+      </div>
+      <div id="scan-error" style="margin-top:0.75rem; display:none;"></div>
+    </div>
+
+    <!-- Result Panel -->
+    <div id="result-panel" class="fade-in">
+
+      <!-- Warning banner (phishing only) -->
+      <div id="warning-banner" class="warning-banner" style="display:none;">
+        <div class="icon">⚠️</div>
+        <div>
+          <h3>⚠ Warning — Potential Phishing Site Detected</h3>
+          <p>This website may attempt to steal your sensitive information including passwords, credit card numbers, or personal data. Do NOT visit this link.</p>
+        </div>
+      </div>
+
+      <!-- Main result card -->
+      <div class="card card-glow" style="margin-bottom:1.25rem;">
+        <div class="result-header">
+          <div>
+            <div class="verdict-big" id="verdict-display"></div>
+            <div style="margin-top:0.5rem;" id="url-display"></div>
+          </div>
+          <div class="gauge-row">
+            <div class="conf-circle" id="conf-circle">
+              <span class="pct" id="conf-pct">0%</span>
+              <span class="lbl">Phishing<br>Probability</span>
+            </div>
+            <div>
+              <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.3rem;">Risk Level</div>
+              <div id="risk-badge"></div>
+              <div style="font-size:0.8rem; color:var(--text-dim); margin-top:0.75rem;" id="confirmed-badge"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="margin-bottom:0.4rem; display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-dim);">
+          <span>Phishing Probability</span>
+          <span id="conf-label-pct"></span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="conf-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Feature checks -->
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div style="font-size:0.85rem; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:1rem;">Security Checks</div>
+        <div class="feature-checks" id="feature-checks"></div>
+      </div>
+
+      <!-- Detected issues -->
+      <div class="card" id="reasons-card" style="margin-bottom:1.25rem; display:none;">
+        <div style="font-size:0.85rem; color:var(--text-dim); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:1rem;">⚠ Detected Issues</div>
+        <ul class="reasons-list" id="reasons-list"></ul>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="runScan()">🔄 Re-scan</button>
+        <button class="btn btn-outline" onclick="copyResult()">📋 Copy Result</button>
+        <a href="/dashboard.html" class="btn btn-outline">📊 View Dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR Tab -->
+  <div id="qr-tab" class="tab-panel">
+    <div class="card">
+      <h3 style="color:#fff; margin-bottom:0.5rem;">📷 QR Code Scanner</h3>
+      <p style="color:var(--text-dim); font-size:0.88rem; margin-bottom:1.5rem;">Upload a QR code image to extract and analyze the embedded URL</p>
+      <div class="qr-area" onclick="document.getElementById('qr-file').click()">
+        <div class="qr-icon">📷</div>
+        <div style="font-size:0.95rem; color:#fff; margin-bottom:0.4rem;">Click to upload QR code image</div>
+        <div style="font-size:0.82rem;">Supports PNG, JPG, WEBP</div>
+        <input type="file" id="qr-file" accept="image/*" onchange="handleQR(event)" />
+      </div>
+      <div id="qr-result" style="margin-top:1rem; display:none;"></div>
+    </div>
+  </div>
+
+  <!-- History Tab -->
+  <div id="history-tab" class="tab-panel">
+    <div class="card">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+        <h3 style="color:#fff;">🕓 Scan History</h3>
+        <button class="btn btn-outline" style="padding:0.4rem 0.9rem; font-size:0.82rem;" onclick="clearHistory()">🗑 Clear</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>&copy; 2025 PhishGuard — Intelligent Phishing Threat Analysis Platform</footer>
+
+<script src="js/main.js"></script>
+<script>
+// ── Tab switching ──
+function switchTab(id, btn) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  btn.classList.add("active");
+  if (id === "history-tab") renderHistory();
+}
+
+// ── Main scan ──
+async function runScan() {
+  const input = document.getElementById("url-input");
+  const btn   = document.getElementById("scan-btn");
+  const errBox = document.getElementById("scan-error");
+  const url   = input.value.trim();
+
+  if (!url) { input.focus(); return; }
+
+  errBox.style.display = "none";
+  btn.disabled = true;
+  document.getElementById("scan-btn-text").innerHTML = '<span class="spinner"></span> Scanning…';
+  document.getElementById("result-panel").style.display = "none";
+
+  try {
+    const data = await analyzeURL(url);
+    History.add(data);
+    renderResult(data);
+  } catch(e) {
+    errBox.innerHTML = `<div class="alert alert-danger">⚠ Could not reach backend. Make sure Flask is running on port 5000.<br><small>${e.message}</small></div>`;
+    errBox.style.display = "block";
+  }
+
+  btn.disabled = false;
+  document.getElementById("scan-btn-text").innerHTML = "🔍 Scan URL";
+}
+
+// ── Render result ──
+function renderResult(data) {
+  const c = verdictColor(data.verdict);
+  const icons = { SAFE: "✅", SUSPICIOUS: "⚠️", PHISHING: "🚨" };
+
+  // Verdict
+  document.getElementById("verdict-display").innerHTML =
+    `<span class="verdict-${c}">${icons[data.verdict]} ${data.verdict}</span>`;
+  document.getElementById("url-display").innerHTML =
+    `<span class="url-display">${data.url}</span>`;
+
+  // Confidence circle
+  const circle = document.getElementById("conf-circle");
+  circle.className = `conf-circle conf-${c}`;
+  document.getElementById("conf-pct").textContent = data.confidence + "%";
+  document.getElementById("conf-label-pct").textContent = data.confidence + "%";
+
+  // Progress bar
+  const bar = document.getElementById("conf-bar");
+  bar.className = `progress-bar progress-${c}`;
+  setTimeout(() => bar.style.width = data.confidence + "%", 50);
+
+  // Risk badge
+  document.getElementById("risk-badge").innerHTML =
+    `<span class="badge badge-${c}" style="font-size:0.9rem;">Risk: ${data.risk}</span>`;
+
+  // Confirmed badge
+  document.getElementById("confirmed-badge").innerHTML = data.confirmed_phishing
+    ? `<span style="color:var(--red); font-size:0.82rem;">🔴 Confirmed in threat DB</span>`
+    : `<span style="color:var(--text-dim); font-size:0.82rem;">Not in threat DB</span>`;
+
+  // Warning banner
+  document.getElementById("warning-banner").style.display =
+    data.verdict === "PHISHING" ? "flex" : "none";
+
+  // Feature checks
+  const f = data.features;
+  const checks = [
+    { label: "HTTPS / SSL",        ok: f.has_https,           good: true },
+    { label: "No IP in URL",       ok: !f.has_ip,             good: true },
+    { label: "Brand Safe",         ok: !f.brand_similarity,   good: true },
+    { label: "No Suspicious KW",   ok: !f.suspicious_keywords,good: true },
+    { label: "Normal URL Length",  ok: f.url_length < 75,     good: true },
+    { label: "Subdomain OK",       ok: f.subdomain_count <= 2,good: true },
+  ];
+  document.getElementById("feature-checks").innerHTML = checks.map(ch => {
+    const dot = ch.ok ? "dot-good" : "dot-bad";
+    const icon = ch.ok ? "✔" : "✖";
+    const color = ch.ok ? "var(--green)" : "var(--red)";
+    return `<div class="fcheck">
+      <div class="dot ${dot}"></div>
+      <span style="color:${color}; font-weight:600; margin-right:2px;">${icon}</span>
+      <span>${ch.label}</span>
+    </div>`;
+  }).join("");
+
+  // Reasons
+  const reasonsCard = document.getElementById("reasons-card");
+  const reasonsList = document.getElementById("reasons-list");
+  if (data.reasons && data.reasons.length > 0) {
+    reasonsList.innerHTML = data.reasons.map(r =>
+      `<li>⚠ ${r}</li>`
+    ).join("");
+    reasonsCard.style.display = "block";
+  } else {
+    reasonsCard.style.display = "none";
+  }
+
+  document.getElementById("result-panel").style.display = "block";
+  document.getElementById("result-panel").classList.add("fade-in");
+  document.getElementById("result-panel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+// ── Clear ──
+function clearAll() {
+  document.getElementById("url-input").value = "";
+  document.getElementById("result-panel").style.display = "none";
+  document.getElementById("scan-error").style.display = "none";
+}
+
+// ── Copy result ──
+function copyResult() {
+  const last = History.get()[0];
+  if (!last) return;
+  const text = `PhishGuard Scan Result\nURL: ${last.url}\nVerdict: ${last.verdict}\nRisk: ${last.risk}\nConfidence: ${last.confidence}%\nIssues: ${(last.reasons||[]).join(", ")||"None"}`;
+  navigator.clipboard.writeText(text).then(() => alert("Result copied to clipboard!"));
+}
+
+// ── History ──
+function renderHistory() {
+  const list = History.get();
+  const el = document.getElementById("history-list");
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center; color:var(--text-dim); padding:2rem;">No scans yet</div>`;
+    return;
+  }
+  el.innerHTML = list.map(item => `
+    <div class="history-item">
+      <span class="url-text" title="${item.url}">${truncateURL(item.url)}</span>
+      ${verdictBadge(item.verdict)}
+      <span style="font-size:0.78rem; color:var(--text-dim); white-space:nowrap;">${item.confidence}%</span>
+      <span style="font-size:0.75rem; color:var(--text-dim); white-space:nowrap;">${timeAgo(item.time)}</span>
+      <button class="btn btn-outline" style="padding:0.3rem 0.7rem; font-size:0.78rem;"
+        onclick="reScan('${item.url.replace(/'/g,"\\'")}')">Re-scan</button>
+    </div>`).join("");
+}
+
+function reScan(url) {
+  document.getElementById("url-input").value = url;
+  switchTab("url-tab", document.querySelector(".tab-btn"));
+  runScan();
+}
+
+function clearHistory() {
+  if (confirm("Clear all scan history?")) { History.clear(); renderHistory(); }
+}
+
+// ── QR Code (uses jsQR via CDN) ──
+function handleQR(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      if (typeof jsQR === "undefined") {
+        document.getElementById("qr-result").innerHTML =
+          `<div class="alert alert-info">ℹ jsQR library not loaded. Paste the URL manually in the URL Scanner tab.</div>`;
+        document.getElementById("qr-result").style.display = "block";
+        return;
+      }
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+      const resultEl = document.getElementById("qr-result");
+      if (code) {
+        resultEl.innerHTML = `
+          <div class="alert alert-info" style="margin-bottom:0.75rem;">
+            📷 QR URL extracted: <span class="url-display" style="display:inline;">${code.data}</span>
+          </div>
+          <button class="btn btn-primary" onclick="scanQRUrl('${code.data.replace(/'/g,"\\'")}')">🔍 Scan This URL</button>`;
+        resultEl.style.display = "block";
+      } else {
+        resultEl.innerHTML = `<div class="alert alert-warning">⚠ No QR code detected in image.</div>`;
+        resultEl.style.display = "block";
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function scanQRUrl(url) {
+  document.getElementById("url-input").value = url;
+  switchTab("url-tab", document.querySelector(".tab-btn"));
+  runScan();
+}
+
+// ── Load last result from homepage ──
+window.addEventListener("load", () => {
+  const last = sessionStorage.getItem("last_result");
+  if (last) {
+    try {
+      const data = JSON.parse(last);
+      document.getElementById("url-input").value = data.url;
+      renderResult(data);
+      sessionStorage.removeItem("last_result");
+    } catch {}
+  }
+});
+
+document.getElementById("url-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") runScan();
+});
+</script>
+
+<!-- jsQR for QR code decoding -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+</body>
+</html>
