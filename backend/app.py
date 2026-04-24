@@ -34,7 +34,9 @@ log = logging.getLogger(__name__)
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 FRONTEND = os.path.join(os.path.dirname(__file__), "..", "docs")
-app = Flask(__name__, static_folder=FRONTEND, static_url_path="")
+if not os.path.exists(FRONTEND):
+    FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
+app = Flask(__name__, static_folder=os.path.abspath(FRONTEND), static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB max request body
 
 CORS(app, resources={r"/analyze": {"origins": "*"}, r"/recent": {"origins": "*"}, r"/health": {"origins": "*"}, r"/stats": {"origins": "*"}, r"/search": {"origins": "*"}})
@@ -96,10 +98,10 @@ def log_response(response):
 # ── Error handlers ────────────────────────────────────────────────────────────
 @app.errorhandler(404)
 def not_found(_):
-    if request.path.startswith("/"):
-        # Try to serve index for unknown frontend routes
+    # Only serve index.html for non-API routes
+    if not request.path.startswith(("/analyze", "/recent", "/health", "/stats", "/search")):
         try:
-            return send_from_directory(FRONTEND, "index.html")
+            return send_from_directory(os.path.abspath(FRONTEND), "index.html")
         except Exception:
             pass
     return jsonify({"error": "Not found"}), 404
