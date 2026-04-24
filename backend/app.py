@@ -33,11 +33,11 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # ── App setup ─────────────────────────────────────────────────────────────────
-FRONTEND = os.path.join(os.path.dirname(__file__), "..", "frontend")
+FRONTEND = os.path.join(os.path.dirname(__file__), "..", "docs")
 app = Flask(__name__, static_folder=FRONTEND, static_url_path="")
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # 16 KB max request body
 
-CORS(app, resources={r"/analyze": {"origins": "*"}, r"/recent": {"origins": "*"}, r"/health": {"origins": "*"}})
+CORS(app, resources={r"/analyze": {"origins": "*"}, r"/recent": {"origins": "*"}, r"/health": {"origins": "*"}, r"/stats": {"origins": "*"}, r"/search": {"origins": "*"}})
 
 limiter = Limiter(
     get_remote_address,

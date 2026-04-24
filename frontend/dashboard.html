@@ -287,7 +287,7 @@ function filterLog(type, data) {
       ${verdictBadge(l.verdict)}
       <span class="log-url" title="${l.url}">${truncateURL(l.url, 60)}</span>
       <span style="color:var(--accent); font-size:0.8rem; white-space:nowrap;">${l.confidence}%</span>
-      <span class="log-time">${l.time || ""}</span>
+    <span class="log-time">${timeAgo(l.time)}</span>
     </div>`).join("");
 }
 
