@@ -6,12 +6,10 @@ const API = (location.hostname === "127.0.0.1" || location.hostname === "localho
 // ── Shared nav highlight + hamburger ──
 document.addEventListener("DOMContentLoaded", () => {
   // Active link highlight
-  const path = location.pathname;
+  const page = location.pathname.split("/").pop() || "index.html";
   document.querySelectorAll(".nav-links a").forEach(a => {
     const href = a.getAttribute("href");
-    if (href === "/" && (path === "/" || path === "/index.html")) {
-      a.classList.add("active");
-    } else if (href !== "/" && path.endsWith(href.replace(/^\//, ""))) {
+    if (href === page || (page === "" && href === "index.html")) {
       a.classList.add("active");
     }
   });
